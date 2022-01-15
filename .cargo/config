@@ -1,0 +1,5 @@
+[target.arm-unknown-linux-musleabi]
+linker = "arm-openwrt-linux-muslgnueabi-gcc"
+
+[target.mips-unknown-linux-musl]
+linker = "mips-openwrt-linux-musl-gcc"
