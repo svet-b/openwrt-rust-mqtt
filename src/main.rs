@@ -80,6 +80,23 @@ fn subscribe_topics(cli: &mqtt::Client) {
 }
 
 fn main() {
+    use tokio_modbus::prelude::*;
+
+    // let socket_addr = "127.0.0.1:502".parse().unwrap();
+    // let mut modbus_client = client::sync::tcp::connect(socket_addr).unwrap();
+    // let data = client.read_input_registers(0x1000, 7);
+    // println!("Response is '{:?}'", data);
+
+    let tty_path = "/dev/ttyUSB0";
+    let slave = Slave(0x17);
+
+    let builder = tokio_serial::new(tty_path, 9600);
+
+    let mut ctx = sync::rtu::connect_slave(&builder, slave).unwrap();
+    println!("Reading a sensor value");
+    let rsp = ctx.read_holding_registers(0x082B, 2).unwrap();
+    println!("Sensor value is: {:?}", rsp);
+
     let mut client = init_mqtt_client();
 
     // Initialize the consumer before connecting.

@@ -1,5 +1,3 @@
-cargo-features = ["strip"]
-
 [package]
 name = "rust_mqtt"
 version = "0.1.0"
@@ -9,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 paho-mqtt = { version = "*", default-features = false, features = ["bundled"] }
+tokio-modbus = { version = "*", default-features = true, features = ["tcp", "rtu", "sync"] }
+tokio-serial = "*"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
