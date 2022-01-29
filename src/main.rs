@@ -1,114 +1,35 @@
-use std::{env, process, str, thread, time::Duration};
+use rumqttc::{Client, MqttOptions, QoS};
+use std::str;
+use std::thread;
+use std::time::Duration;
 
-use paho_mqtt as mqtt;
-
-const BROKER_URI: &str = "tcp://localhost:1883";
+const BROKER_HOST: &str = "localhost";
+const BROKER_PORT: u16 = 1883;
 const CLIENT_ID: &str = "rust_subscribe";
-const SUB_TOPIC: &str = "in/#";
-const PUB_TOPIC: &str = "out/pub";
-const QOS: i32 = 1;
-
-fn process_message(msg: &[u8]) -> f64 {
-    str::from_utf8(msg)
-        .unwrap()
-        .parse::<f64>()
-        .unwrap_or_default()
-        * 2.0
-}
-
-fn init_mqtt_client() -> mqtt::Client {
-    let host = env::args().nth(1).unwrap_or_else(|| BROKER_URI.to_string());
-
-    // Define the set of options for the create.
-    // Use an ID for a persistent session.
-    let create_opts = mqtt::CreateOptionsBuilder::new()
-        .server_uri(host)
-        .client_id(CLIENT_ID.to_string())
-        .finalize();
-
-    // Create a client.
-    mqtt::Client::new(create_opts).unwrap_or_else(|err| {
-        println!("Error creating the client: {:?}", err);
-        process::exit(1);
-    })
-}
-
-// Initial connection to broker
-fn mqtt_connect(cli: &mqtt::Client) -> bool {
-    // Define the set of options for the connection.
-    let lwt = mqtt::MessageBuilder::new()
-        .topic("test")
-        .payload("Consumer lost connection")
-        .finalize();
-    let conn_opts = mqtt::ConnectOptionsBuilder::new()
-        .keep_alive_interval(Duration::from_secs(20))
-        .clean_session(false)
-        .will_message(lwt)
-        .finalize();
-
-    println!("Connecting to broker");
-    loop {
-        if cli.connect(conn_opts.clone()).is_ok() {
-            println!("Successfully connected");
-            subscribe_topics(&cli);
-            return true;
-        }
-        println!("Connection failed. Waiting to retry connection");
-        thread::sleep(Duration::from_millis(5000));
-        println!("Retrying");
-    }
-}
-
-fn mqtt_reconnect(cli: &mqtt::Client) -> bool {
-    loop {
-        thread::sleep(Duration::from_millis(5000));
-        println!("Reconnecting");
-        if cli.reconnect().is_ok() {
-            println!("Successfully reconnected");
-            subscribe_topics(&cli);
-            return true;
-        }
-    }
-}
-
-// Subscribes to multiple topics.
-fn subscribe_topics(cli: &mqtt::Client) {
-    if let Err(e) = cli.subscribe(SUB_TOPIC, QOS) {
-        println!("Error while subscribing to topic: {:?}", e);
-        process::exit(1);
-    }
-}
+const SUB_TOPIC: &str = "hello/#";
+const PUB_TOPIC: &str = "hello/output";
+// const RECONNECT_TIME: u64 = 5;
+const KEEPALIVE: u64 = 20;
+const CAPACITY: usize = 5;
 
 fn main() {
-    let mut client = init_mqtt_client();
+    let mut mqttoptions = MqttOptions::new(CLIENT_ID, BROKER_HOST, BROKER_PORT);
+    mqttoptions.set_keep_alive(Duration::from_secs(KEEPALIVE));
 
-    // Initialize the consumer before connecting.
-    let rx = client.start_consuming();
+    let (mut client, mut connection) = Client::new(mqttoptions, CAPACITY);
+    client.subscribe(SUB_TOPIC, QoS::AtMostOnce).unwrap();
 
-    // Connect to broker
-    mqtt_connect(&client);
-
-    println!("Processing requests...");
-    for msg in rx.iter() {
-        if let Some(msg) = msg {
-            println!("topic: {:?}; msg: {:?}", msg.topic(), msg.payload_str());
-            let msg_out = mqtt::Message::new(
-                PUB_TOPIC,
-                process_message(msg.payload()).to_string().as_bytes(),
-                QOS
-            );
-            client.publish(msg_out).unwrap();
-        } else if !client.is_connected() {
-            println!("Connection lost. Waiting to retry connection");
-            mqtt_reconnect(&client);
+    thread::spawn(move || {
+        for _ in 0..10 {
+            client
+                .publish(PUB_TOPIC, QoS::AtLeastOnce, false, "hello")
+                .unwrap();
+            thread::sleep(Duration::from_secs(2));
         }
-    }
+    });
 
-    // If still connected, then disconnect now.
-    if client.is_connected() {
-        println!("Disconnecting");
-        client.unsubscribe(SUB_TOPIC).unwrap();
-        client.disconnect(None).unwrap();
+    // Iterate to poll the eventloop for connection progress
+    for (_, notification) in connection.iter().enumerate() {
+        println!("Notification = {:?}", notification.unwrap());
     }
-    println!("Exiting");
 }

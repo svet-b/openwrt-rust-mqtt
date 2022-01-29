@@ -6,17 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-paho-mqtt = { version = "*", default-features = false, features = ["bundled"] }
+rumqttc = "*"
+#futures = "*"
+#tokio = "^1.0"
+#log = "*"
+#env_logger = "*"
+
+#paho-mqtt = { version = "*", default-features = false, features = ["bundled"] }
 
 #minimq = "*"
 #std-embedded-nal = "*"
 #std-embedded-time = "*"
 
-#rumqttc = "0.10.0"
-#futures = "*"
-#tokio = "^1.0"
-#log = "*"
-#env_logger = "*"
 
 #[[bin]]
 #name = "sub"
