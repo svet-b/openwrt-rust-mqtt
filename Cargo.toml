@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 paho-mqtt = { version = "*", default-features = false, features = ["bundled"] }
-tokio-modbus = { version = "*", default-features = true, features = ["tcp", "rtu", "sync"] }
+tokio-modbus = { version = "*", default-features = true, features = ["sync"] }
 tokio-serial = "*"
 
 [profile.release]
